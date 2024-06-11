@@ -1,0 +1,48 @@
+steps:
+#
+# Build
+#
+- title: Get Current Version
+  command: git pull && git submodule update --init --recursive
+
+- title: NPM Install
+  command: npm i
+
+- title: Semantic Release
+  command: npx semantic-release --no-ci --debug
+
+- title: Find .uplugin
+  command: node CI/shared/tools/find-file-in-folder.js . "\.uplugin$" CI_UE_UPLUGIN
+
+- title: Update Plugin Version
+  command: node CI/shared/tools/replace-in-file.js
+    ${CI_UE_UPLUGIN}
+    "(?<=\"VersionName\":\\W\").+(?=\")"
+    "${CI_VERSION}"
+
+# Epic Games Marketplace will only build for the last 3 major releases in the cloud
+# source: https://www.unrealengine.com/en-US/marketplace-guidelines
+
+# - title: Test Build UE 5.0
+#   command: ${UE5.0_HOME}\Engine\Build\BatchFiles\RunUAT.bat BuildPlugin -Plugin="%cd%\${CI_UE_UPLUGIN}" -Package="%cd%\TestBuild\testbuild-UE50"
+
+# - title: Test Build UE 5.1
+#   command: ${UE5.1_HOME}\Engine\Build\BatchFiles\RunUAT.bat BuildPlugin -Plugin="%cd%\${CI_UE_UPLUGIN}" -Package="%cd%\TestBuild\testbuild-UE51"
+
+- title: Test Build UE 5.2
+  command: ${UE5.2_HOME}\Engine\Build\BatchFiles\RunUAT.bat BuildPlugin -Plugin="%cd%\${CI_UE_UPLUGIN}" -Package="%cd%\TestBuild\testbuild-UE52"
+
+- title: Clean Dist
+  skippable: true
+  command: del Distribution\prepared_${CI_VERSION}.zip
+
+# Zip Up for UE Marketplace
+
+- title: Zip
+  command: mkdir Distribution & tar.exe -a -c -f Distribution\prepared_${CI_VERSION}.zip 
+    Config
+    Content
+    Resources
+    Source
+    %CI_UE_UPLUGIN%
+    && echo Done. Distribution/prepared_${CI_VERSION}.zip 
